@@ -35,7 +35,7 @@ public class TCPClient{
 			String input = inFromUser.readLine();
 			if(input.equals("set username")){
 				user = inFromUser.readLine();
-				outToServer.write("set username: " + user); //Figure out what listener means
+				outToServer.write("set username: " + user); 
 				String response = inFromServer().readLine();
 				System.out.println(response); //print response from the server of whether or not it was set
 				if(repsonse.eqauls("successfully set"))
@@ -45,10 +45,15 @@ public class TCPClient{
 				clientSocket.close();   
 				appOn=false;
 			}
-			else if(input.equals("set correspondant")){
-				//set the correspondent if they exist in the server
-				//Figure out what listener means-> I think it means set its own username as the correspondent
-				//
+			else if(input.equals("set correspondent")){
+				String correspondent = inFromUser.readLine();
+				outToServer.write("set correspondent:" + chattingWith);
+				String response = inFromServer.readLine();
+				System.out.println(response);
+				if(response == ("successfully set up chat with" + correspondent)){
+					chattingWith = correspondent;
+					openChat=true;
+				}
 			}
 			else if(input.equals(endOfMessage));
 			else{//assume its a message
@@ -58,25 +63,8 @@ public class TCPClient{
 					builder.append('\n');
 					input=inFromUser.readLine();
 				}
+				outToServer.write("message:" + builder.toString());
 			}
 		}
-		//control msg
-		//specify username of client, send to server to establish connection
-
-		//specify the username of person to chat to or Listener
-			//can only chat with one at a time
-			//ends chat when changes to new person
-
-		//-1 = end of message
-		//make sure no overlap between reivece and sent messages
-
-		//finish the chat and exit the app
-
-		//unless input is a control command assume it is a text to correspondant
-		//Listener the message goes back to the remote user that initiated chat
-
-
-
-
 	}
 }
