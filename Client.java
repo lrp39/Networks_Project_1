@@ -45,7 +45,7 @@ public class Client {
 				while(!usernameSet){
 					System.out.println("Please enter a username");
 					String name= inFromUser.readLine();
-					outToServer.writeChars("SETUSERNAME:"+ name);
+					outToServer.writeChars("SETUSERNAME:"+ name + '\n');
 					String response = inFromServer.readLine();
 					if(response.equals("USERNAME SUCCESSFULLY SET")){
 						username= name;
