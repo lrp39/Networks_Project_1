@@ -11,6 +11,10 @@ class TCPServer {
   //keeps track of active users
   private static HashSet<String> users = new HashSet<String>();
 
+  private static LinkedList<Connection> chats = new LinkedList<Connection>();
+
+  private static LinkedList<ServerConnection> clients = new LinkedList<ServerConnection>();
+
   //keep track of chat connections between clients
   //private static LinkedList<Connection> connections = new LinkedList<Connection>();
 
@@ -74,23 +78,100 @@ class TCPServer {
           while(applicationOn){
             if(controlMSG.equals("ENDCONNECTION")){
                 applicationOn=false;
-                users.remove(username);
+                synchronized (users){
+                  users.remove(username);
+                }
                 System.out.println("Connection with user: " + username + " is terminated");
                 socket.close();
             }
-            else if(controlMSG.equals("SETUSERNAME")){ //left off here letting users change their names
-
+            else if(controlMSG.equals("SETUSERNAME")){ 
+              boolean newNameSet=false;
+              System.out.println("Setting new username for: " + username);
+                while(!newNameSet){
+                  synchronized (users){
+                  proposedUsername = inFromClient.readLine(); 
+                  System.out.println("TRY: "+ proposedUsername);
+                  if(!users.contains(proposedUsername)){
+                    users.remove(username);
+                    this.username= proposedUsername;
+                    users.add(proposedUsername);
+                    response= "SUCCESSFULLY SET USERNAME";
+                    System.out.println("New user: "+ this.username);
+                    System.out.println(response);
+                    outToClient.writeBytes(response + '\n');
+                    newNameSet=true;
+                  
+                }
+                  else{
+                    response = "UNSUCCESSFUL ATTEMPT TO SET USERNAME";
+                    System.out.println(response);
+                    outToClient.writeBytes(response + '\n');
+                  }
+                }
+                
+              } 
+            }
+            else if(controlMSG.equals("SETUPCHAT")){
+              String output= "-";
+              String partner = inFromClient.readLine();
+              if(partner.equals("Listener")){
+                //Remove exitsting connection
+                //setup connection with self
+                ServerConnection userconnection = findConnection(username,clients);
+                chats.add(new Connection(userconnection,userconnection));
+                output = "CHAT SUCCESSFULLY SET UP";
+              }
+              else if(users.contains(partner)){
+                if(users.contains(partner)){
+                  //remove existing connection
+                  ServerConnection userconnection = findConnection(username,clients);
+                  ServerConnection partnerconnection = findConnection(partner,clients);
+                  chats.add(new Connection(userconnection,partnerconnection));
+                  output = "CHAT SUCCESSFULLY SET UP";
+                }
+              }
+              else{
+                output="UNSUCCESSFUL INVAILD USERNAME FOR CLIENT";
+              }
+              outToClient.writeBytes(output+ '\n');
             }
           }
-
-      } 
+        }
+ 
     catch (IOException e) {
                 System.out.println(e);
     }
-  } 
-
-
   }
+  } 
+  public static ServerConnection findConnection(String username,LinkedList<ServerConnection> list){
+    for(int i=0;i<clients.size();i++){
+      if(list.get(i).name.equals(username)){
+        return list.get(i);
+      }
+    }
+     return null;
+  }
+
+
+  private static class Connection{
+    public ServerConnection sender;
+    public ServerConnection reciever;
+
+    public Connection(ServerConnection s,ServerConnection r){
+      this.sender=s;
+      this.reciever=r;
+    }
+}
+  private static class ServerConnection{
+    public String name;
+    public DataOutputStream toClient;
+
+    public ServerConnection(String s, DataOutputStream toC){
+      this.name=s;
+      this.toClient=toC;
+    }
+}
+
 }
 
 
