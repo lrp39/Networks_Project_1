@@ -1,4 +1,3 @@
-package simple_chat_application;
 import java.io.*;
 import java.net.*;
 import java.net.ServerSocket;
@@ -6,7 +5,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 /*Make sure to go back to client and have them be removed from the users when they exit the app*/
 /*Maybe make it so if one user sets a chat with another they automatically are both chatting with eachother*/
-public class Server {
+public class Chatd {
 	private static final int PORT = 5537;
 	//keeps track of active users
 	private static HashSet<String> users = new HashSet<String>();
