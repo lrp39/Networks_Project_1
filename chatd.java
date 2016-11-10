@@ -5,22 +5,19 @@ import java.net.*;
 import java.net.ServerSocket;
 import java.util.HashSet;
 import java.util.LinkedList;
-class TCPServer { 
+class chatd { 
 
   private static final int PORT = 5037;
   //keeps track of active users
   private static HashSet<String> users = new HashSet<String>();
 
+  //keep track of chat connections between clients
   private static LinkedList<Connection> chats = new LinkedList<Connection>();
 
+  //Keeps track of input/output streams to clients
   private static LinkedList<ServerConnection> clients = new LinkedList<ServerConnection>();
 
-  //keep track of chat connections between clients
-  //private static LinkedList<Connection> connections = new LinkedList<Connection>();
-
-  //Keeps track of input/output streams to clients
-  //private static LinkedList<Clients> clients = new LinkedList<Clients>();
-
+  /*Sets up a new thread for every client connection*/
   public static void main(String argv[]) throws Exception {
     ServerSocket welcomeSocket = new ServerSocket(PORT);
     System.out.println(InetAddress.getLocalHost().getHostName());
@@ -32,7 +29,9 @@ class TCPServer {
             welcomeSocket.close();
         }
     }
-    private static class ConnectionThread extends Thread{
+
+  /*Class to run each client connection*/
+  private static class ConnectionThread extends Thread{
       public String username = "";
       public Socket socket;
       public BufferedReader inFromClient;
@@ -53,12 +52,13 @@ class TCPServer {
 
           //Print out the host name the server can be identified by
           System.out.println(InetAddress.getLocalHost().getHostName());
+
+          //While the username in not set yet, make client pick one
           while(username.equals("")){
           proposedUsername = inFromClient.readLine(); 
-          System.out.println("TRY: "+ proposedUsername);
-          users.add("leah");
-          synchronized (users){
-              if(!users.contains(proposedUsername)){
+
+          synchronized (users){/*Checks to see if name is already taken*/
+              if(!users.contains(proposedUsername)){ //If its availible, set it as the username
                 this.username= proposedUsername;
                 users.add(proposedUsername);
                 response= "SUCCESSFULLY SET USERNAME";
@@ -66,25 +66,39 @@ class TCPServer {
                 System.out.println(response);
                 outToClient.writeBytes(response + '\n');
               }
-              else{
+              else{ //Reject if already used
                 response = "UNSUCCESSFUL ATTEMPT TO SET USERNAME";
                 System.out.println(response);
                 outToClient.writeBytes(response + '\n');
               }
             }
           }
-          Boolean applicationOn=true; 
-          String controlMSG = inFromClient.readLine();
+          Boolean applicationOn=true; //Turn other control options on 
+          String controlMSG = inFromClient.readLine(); //Recieve controlmsg
+
           while(applicationOn){
-            if(controlMSG.equals("ENDCONNECTION")){
+            if(controlMSG.equals("ENDCONNECTION")){ //if the user wants to disconnect
                 applicationOn=false;
                 synchronized (users){
-                  users.remove(username);
+                  users.remove(username); //make username available again
                 }
-                System.out.println("Connection with user: " + username + " is terminated");
+                //remove all traces of user
+                for(int i = 0; i< chats.size();i++){
+                  if(chats.get(i).sender.name.equals(username)){
+                    chats.remove(i);
+                  }
+                }
+                //remove all traces of user
+                for(int i = 0; i< clients.size();i++){
+                  if(clients.get(i).name.equals(username)){
+                    clients.remove(i);
+                  }
+                }
+                System.out.println("Connection with user: " + username + " is terminated"); //notify server of changes
                 socket.close();
             }
-            else if(controlMSG.equals("SETUSERNAME")){ 
+
+            else if(controlMSG.equals("SETUSERNAME")){ //the client wants to change their username
               boolean newNameSet=false;
               System.out.println("Setting new username for: " + username);
                 while(!newNameSet){
@@ -93,7 +107,19 @@ class TCPServer {
                   System.out.println("TRY: "+ proposedUsername);
                   if(!users.contains(proposedUsername)){
                     users.remove(username);
-                    this.username= proposedUsername;
+                    //remove all traces of user
+                  for(int i = 0; i< chats.size();i++){
+                    if(chats.get(i).sender.name.equals(username)){
+                      chats.remove(i);
+                    }
+                  }
+                  //remove all traces of user
+                  for(int i = 0; i< clients.size();i++){
+                    if(clients.get(i).name.equals(username)){
+                      clients.remove(i);
+                    }
+                  }
+                    this.username= proposedUsername; //create new username
                     users.add(proposedUsername);
                     response= "SUCCESSFULLY SET USERNAME";
                     System.out.println("New user: "+ this.username);
@@ -111,19 +137,33 @@ class TCPServer {
                 
               } 
             }
-            else if(controlMSG.equals("SETUPCHAT")){
+
+            else if(controlMSG.equals("SETUPCHAT")){ //Create a new connecion between clients, remove old ones
               String output= "-";
               String partner = inFromClient.readLine();
+              System.out.println("Requested partner " + partner);
               if(partner.equals("Listener")){
                 //Remove exitsting connection
+                for(int i = 0; i< chats.size();i++){
+                  if(chats.get(i).sender.name.equals(username)){
+                    chats.remove(i);
+                  }
+                }
                 //setup connection with self
                 ServerConnection userconnection = findConnection(username,clients);
                 chats.add(new Connection(userconnection,userconnection));
                 output = "CHAT SUCCESSFULLY SET UP";
               }
+
               else if(users.contains(partner)){
                 if(users.contains(partner)){
                   //remove existing connection
+                  for(int i = 0; i< chats.size();i++){
+                    if(chats.get(i).sender.name.equals(username)){
+                      chats.remove(i);
+                    }
+                  }
+                  //set up new connection
                   ServerConnection userconnection = findConnection(username,clients);
                   ServerConnection partnerconnection = findConnection(partner,clients);
                   chats.add(new Connection(userconnection,partnerconnection));
@@ -135,16 +175,45 @@ class TCPServer {
               }
               outToClient.writeBytes(output+ '\n');
             }
+
+            else{ //assume its an incoming message
+              boolean activeChat =false;
+              Connection chat= null;
+              for(int i =0; i< chats.size();i++){
+                if(chats.get(i).sender.name.equals(username)){
+                  activeChat=true;
+                  chat = chats.get(i);
+                }
+              } /*Make sure their is someone to send it to*/
+              if(activeChat){
+                chat.reciever.toClient.writeBytes("RECIEVE MSG" + '\n');
+                chat.reciever.toClient.writeBytes("MESSAGE FROM: "+ username + '\n');
+                while(!controlMSG.equals("ESCAPE")){
+                  chat.reciever.toClient.writeBytes(controlMSG + '\n');
+                  controlMSG= inFromClient.readLine();
+                }
+                chat.reciever.toClient.writeBytes("ESCAPE" + '\n');
+                response = "MESSAGE SENT TO: "+ chat.reciever.name;
+              }
+              else{ // RETURN COULDN"T SEND MSG, NO ONE TO RECIEVE
+              System.out.println("gets to message");
+                response = "COULDN'T SEND MSG, NOT CHATTING WITH ANYONE";
+              }
+              outToClient.writeBytes(response +'\n');
+            }
           }
+          controlMSG = inFromClient.readLine();
         }
  
     catch (IOException e) {
                 System.out.println(e);
     }
   }
-  } 
+}
+
+  /*Method to find connections between client and server*/
   public static ServerConnection findConnection(String username,LinkedList<ServerConnection> list){
-    for(int i=0;i<clients.size();i++){
+    for(int i=0;i<list.size();i++){
       if(list.get(i).name.equals(username)){
         return list.get(i);
       }
@@ -152,7 +221,7 @@ class TCPServer {
      return null;
   }
 
-
+  /*Class to store a connection between clients*/
   private static class Connection{
     public ServerConnection sender;
     public ServerConnection reciever;
@@ -162,6 +231,7 @@ class TCPServer {
       this.reciever=r;
     }
 }
+  /*Class to store a connection to the client*/
   private static class ServerConnection{
     public String name;
     public DataOutputStream toClient;

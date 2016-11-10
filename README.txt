@@ -1,0 +1,36 @@
+﻿
+Leah Platt 
+lrp39
+EECS 325 Project 1
+READ ME
+
+Instructions: Use port 5037 for clients. 
+	To operate server just compile using javac chatd.java. Then java chatd.
+	( I also included Chatd.java and using java Chatd because I wasn't sure which one you wanted. )
+
+	To operate the client enter the hostname of the server and the port 5037.
+	Then follow the instructions given.
+	Enter a username until you get one that sticks 
+	Then you can use the control messages and try to send messages
+	The control messages are: 
+		'ENCONNECTION' to end your session with the server
+            	'SETUPCHAT' to start a chat with another client
+		SETUSERNAME' to change your username
+            	Anything else will be considered a message for your chat and new 			messages cannot start with ESCAPE
+		To end a messsage on a new line write 'ESCAPE'); 
+
+
+
+What works: 
+	-the server handles new user registration and associates TCP connections with clients
+	-multiple instances of client application can run on the same machine
+	-control messages are distinguishable from data 
+	-server gives correct feedback
+	-code is commented
+	-client is allowed to change chats to a different user 
+
+	
+Bug → resetting user name doesn't always work
+Bug-> never actually and prints messages out
+Bug-> sometimes won't establish a connecion with a user depending on if they are in the middle of a command 
+
